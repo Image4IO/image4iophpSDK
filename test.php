@@ -1,7 +1,7 @@
 <?php
 	include("imageio.class.php");
 	
-	$image = new Image4IO('CflQP+9CzjxNBCUgaQizAw==','v4WQKFyOof4EuQWI9bG5RdgQk+bv7xt7s+7t0burdeo=');
+	$image = new Image4IO(apiKey,apiSecret);
 	
 	//Bağlantı kontrolü
 	$connect = $image->connect();
