@@ -168,5 +168,15 @@
 			$query = $this->query('https://api.image4.io/v0.1/move?source='.$source.'&target_path='.$target,'PUT','',$headers);
 			return $query;
 		}
+
+		
+		public function getSubscription() {
+			$headers = array(
+				'Content-Type: application/json',
+				'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
+			);
+			$query = $this->query('https://api.image4.io/v0.1/subscription','GET','',$headers);
+			return $query;
+		}
 		
 	}
