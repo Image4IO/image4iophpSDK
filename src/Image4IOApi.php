@@ -7,12 +7,14 @@ class Image4IOApi{
     public $api;
 	public $apiKey;
 
+	private $endpoint="https://api.image4.io/v1.0/";
+
     public function __construct($_api,$_apiKey) {
 		$this->api = $_api;
 		$this->apiKey = $_apiKey;
 	}
 	
-	public function query($uri, $method='GET', $data=null, $curl_headers=array(), $curl_options=array()) {
+	public function query($uri, $method, $data=null, $curl_headers=array(), $curl_options=array()) {
 		$default_curl_options = array(
 			CURLOPT_SSL_VERIFYPEER => false,
 			CURLOPT_HEADER => true,
@@ -20,8 +22,11 @@ class Image4IOApi{
 			CURLOPT_TIMEOUT => 3,
 		);
 		$default_headers = array();
+		if(!isset($method)){
+			throw new \Exception("Method cannot be null");
+		}
 		$method = trim($method);
-		$allowed_methods = array('GET', 'POST', 'PUT', 'DELETE');
+		$allowed_methods = array('GET', 'POST', 'PUT', 'PATCH', 'DELETE');
 
 		if(!in_array($method, $allowed_methods))
 			throw new \Exception("'$method' is not valid cURL HTTP method.");
@@ -33,6 +38,10 @@ class Image4IOApi{
 		curl_setopt_array($curl, $default_curl_options);
 		switch($method) {
 			case 'GET':
+				if($data){
+					curl_setopt( $ch, CURLOPT_CUSTOMREQUEST, 'GET' );
+					curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
+				}
 				break;
 			case 'POST':
 				if(!is_array($data))
@@ -46,6 +55,11 @@ class Image4IOApi{
 				curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $method);
 				curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
 				break;
+			case 'PATCH':
+				if(!is_array($data))
+					throw new \Exception("Invalid data for cURL request '$method $uri'");
+				curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $method);
+				curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
 			case 'DELETE':
 				curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $method);
 				break;
@@ -84,25 +98,34 @@ class Image4IOApi{
 			'Content-Type: application/json',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
-		$query = $this->query('https://api.image4.io/v0.1/listfolder','GET','',$headers);
+		$query = $this->query($this->endpoint . 'listfolder','GET','',$headers);
 		return $query;
 	}
 	
-	public function listfolder($path='') {
+	public function listfolder($path='',$token='') {
 		$headers = array(
 			'Content-Type: application/json',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
-		$query = $this->query('https://api.image4.io/v0.1/listfolder?path='.$path,'GET','',$headers);
+		$query = $this->query($this->endpoint . 'listFolder', 'GET', array('path' => $path, 'continuationToken' => $token), $headers);
 		return $query;
 	}
 
-	public function get($name='') {
+	public function getImages($names=array()) {
 		$headers = array(
 			'Content-Type: application/json',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
-		$query = $this->query('https://api.image4.io/v0.1/get?name='.$name,'GET','',$headers);
+		$query = $this->query($this->endpoint . 'images','GET',array('names'=>$names),$headers);
+		return $query;
+	}
+
+	public function getStreams($names=array()) {
+		$headers = array(
+			'Content-Type: application/json',
+			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
+		);
+		$query = $this->query($this->endpoint . 'streams','GET',array('names'=>$names),$headers);
 		return $query;
 	}
 	
@@ -111,62 +134,122 @@ class Image4IOApi{
 			'Content-Type: application/json',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
-		$query = $this->query('https://api.image4.io/v0.1/createfolder?path='.$path,'POST',array('path' => $path),$headers);
+		$query = $this->query($this->endpoint .'createfolder','POST',array('path' => $path),$headers);
+		return $query;
+	}
+
+	public function startUploadStream($path='', $filename='') {
+		$headers = array(
+			'Content-Type: application/json',
+			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
+		);
+		$query = $this->query($this->endpoint .'uploadStream','POST',array('path' => $path,'filename'=>$filename),$headers);
 		return $query;
 	}
 	
-	public function upload($files='',$folder='') {
+	public function uploadImage($file,$folder='',$useFilename=false,$overwrite=true) {
 		$headers = array(
 			'Content-Type: multipart/form-data',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
-		$data['file'] = new CurlFile( $files['tmp_name'], $files['type'],$files['name']);
-		$query = $this->query('https://api.image4.io/v0.1/upload?path='.$folder,'POST',$data,$headers);
+		$data=array(
+			'folder'=>$folder,
+			'useFilename'=>$useFilename,
+			'overwrite'=>$overwrite,
+			'file'=>new CurlFile( $file['tmp_name'], $file['type'],$file['name'])
+		);
+		
+		$query = $this->query($this->endpoint . 'upload', 'POST', $data, $headers);
 		return $query;
 	}
 	
-	public function fetch($from='',$target='') {
+	public function fetchImage($from='',$targetPath='',$useFilename=false) {
 		$headers = array(
 			'Content-Type: application/json',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
-		$query = $this->query('https://api.image4.io/v0.1/fetch?from='.$from.'&target_path='.$target,'POST',array('from' => $from),$headers);
+		$query = $this->query($this->endpoint . 'fetch','POST',array('from' => $from,'targetPath'=>$targetPath,'useFilename'=>$useFilename),$headers);
 		return $query;
 	}
 
-	public function delete($name='') {
+	public function deleteImage($name='') {
 		$headers = array(
 			'Content-Type: application/json',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
-		$query = $this->query('https://api.image4.io/v0.1/deletefile?name='.$name,'DELETE','',$headers);
+		$query = $this->query($this->endpoint .'deleteImage','DELETE',array('name'=>$name),$headers);
 		return json_decode($query);
 	}
 
-	public function deletefolder($path='') {
+	public function deleteStream($name='') {
 		$headers = array(
 			'Content-Type: application/json',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
-		$query = $this->query('https://api.image4.io/v0.1/deletefolder?path='.$path,'DELETE','',$headers);
+		$query = $this->query($this->endpoint .'deleteStream','DELETE',array('name'=>$name),$headers);
+		return json_decode($query);
+	}
+
+	public function deleteFolder($path='') {
+		$headers = array(
+			'Content-Type: application/json',
+			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
+		);
+		$query = $this->query($this->endpoint . 'deleteFolder','DELETE',array('path'=>$path),$headers);
 		return $query;
 	}
 
-	public function copys($source='',$target='') {
+	public function copyImage($source='',$targetPath='',$name='',$useFilename=false,$overwrite=false) {
 		$headers = array(
 			'Content-Type: application/json',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
-		$query = $this->query('https://api.image4.io/v0.1/copy?source='.$source.'&target_path='.$target,'PUT','',$headers);
+		$body=array(
+			'source'=>$source,
+			'targetPath'=>$targetPath,
+			'name'=>$name,
+			'useFilename'=>$useFilename,
+			'overwrite'=>$overwrite
+		);
+		$query = $this->query($this->endpoint . 'copy','PUT',$body,$headers);
 		return $query;
 	}
 	
-	public function move($source='',$target='') {
+	public function moveImage($source='',$target='') {
 		$headers = array(
 			'Content-Type: application/json',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
-		$query = $this->query('https://api.image4.io/v0.1/move?source='.$source.'&target_path='.$target,'PUT','',$headers);
+		$body=array(
+			'source'=>$source,
+			'targetPath'=>$targetPath
+		);
+		$query = $this->query($this->endpoint .'moveImage','PUT',$body,$headers);
+		return $query;
+	}
+
+	public function uploadStreamPart($part,$partId,$filename,$token) {
+		$headers = array(
+			'Content-Type: multipart/form-data',
+			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
+		);
+		$data=array(
+			'partId'=>$partId,
+			'filename'=>$filename,
+			'token'=>$token,
+			'part'=>new CurlFile( $part['tmp_name'], $part['type'],$part['name'])
+		);
+		
+		$query = $this->query($this->endpoint . 'uploadStream', 'PATCH', $data, $headers);
+		return $query;
+	}
+
+	public function finalizeStreamUpload($filename='',$token='') {
+		$headers = array(
+			'Content-Type: application/json',
+			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
+		);
+		$query = $this->query($this->endpoint .'finalizeStream','POST',array('filename' => $filename,'token'=>$token),$headers);
 		return $query;
 	}
 
@@ -175,7 +258,7 @@ class Image4IOApi{
 			'Content-Type: application/json',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
-		$query = $this->query('https://api.image4.io/v0.1/subscription','GET','',$headers);
+		$query = $this->query($this->endpoint . 'subscription','GET',null,$headers);
 		return $query;
 	}
 
