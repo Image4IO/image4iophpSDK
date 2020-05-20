@@ -102,7 +102,7 @@ class Image4IOApi{
 		return $query;
 	}
 	
-	public function listfolder($path='',$token='') {
+	public function listFolder($path='',$token='') {
 		$headers = array(
 			'Content-Type: application/json',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
@@ -129,12 +129,12 @@ class Image4IOApi{
 		return $query;
 	}
 	
-	public function createfolder($path='') {
+	public function createFolder($path='') {
 		$headers = array(
 			'Content-Type: application/json',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
-		$query = $this->query($this->endpoint .'createfolder','POST',array('path' => $path),$headers);
+		$query = $this->query($this->endpoint .'createFolder','POST',array('path' => $path),$headers);
 		return $query;
 	}
 
@@ -159,7 +159,7 @@ class Image4IOApi{
 			'file'=>new CurlFile( $file['tmp_name'], $file['type'],$file['name'])
 		);
 		
-		$query = $this->query($this->endpoint . 'upload', 'POST', $data, $headers);
+		$query = $this->query($this->endpoint . 'uploadImage', 'POST', $data, $headers);
 		return $query;
 	}
 	
@@ -168,7 +168,16 @@ class Image4IOApi{
 			'Content-Type: application/json',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
-		$query = $this->query($this->endpoint . 'fetch','POST',array('from' => $from,'targetPath'=>$targetPath,'useFilename'=>$useFilename),$headers);
+		$query = $this->query($this->endpoint . 'fetchImage','POST',array('from' => $from,'targetPath'=>$targetPath,'useFilename'=>$useFilename),$headers);
+		return $query;
+	}
+
+	public function fetchStream($from='',$targetPath='',$filename='') {
+		$headers = array(
+			'Content-Type: application/json',
+			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
+		);
+		$query = $this->query($this->endpoint . 'fetchStream','POST',array('from' => $from,'targetPath'=>$targetPath,'filename'=>$filename),$headers);
 		return $query;
 	}
 
