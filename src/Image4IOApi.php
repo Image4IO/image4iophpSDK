@@ -38,10 +38,10 @@ class Image4IOApi{
 		curl_setopt_array($curl, $default_curl_options);
 		switch($method) {
 			case 'GET':
-				if($data){
+				/*if($data){
 					curl_setopt( $ch, CURLOPT_CUSTOMREQUEST, 'GET' );
 					curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
-				}
+				}*/
 				break;
 			case 'POST':
 				if(!is_array($data))
@@ -107,25 +107,26 @@ class Image4IOApi{
 			'Content-Type: application/json',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
-		$query = $this->query($this->endpoint . 'listFolder', 'GET', array('path' => $path, 'continuationToken' => $token), $headers);
+		$qs = http_build_query(array('path' => $path, 'continuationToken' => $token));
+		$query = $this->query($this->endpoint . 'listFolder?' . $qs, 'GET', '', $headers);
 		return $query;
 	}
 
-	public function getImages($names=array()) {
+	public function getImage($name) {
 		$headers = array(
 			'Content-Type: application/json',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
-		$query = $this->query($this->endpoint . 'images','GET',array('names'=>$names),$headers);
+		$query = $this->query($this->endpoint . 'image?name=' . $name, 'GET', '', $headers);
 		return $query;
 	}
 
-	public function getStreams($names=array()) {
+	public function getStream($name) {
 		$headers = array(
 			'Content-Type: application/json',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
-		$query = $this->query($this->endpoint . 'streams','GET',array('names'=>$names),$headers);
+		$query = $this->query($this->endpoint . 'stream?name=' . $name, 'GET', '', $headers);
 		return $query;
 	}
 	
