@@ -14,12 +14,12 @@ class Image4IOApi{
 		$this->apiKey = $_apiKey;
 	}
 	
-	public function query($uri, $method, $data=null, $curl_headers=array(), $curl_options=array()) {
+	private function query($uri, $method, $data=null, $curl_headers=array(), $curl_options=array()) {
 		$default_curl_options = array(
 			CURLOPT_SSL_VERIFYPEER => false,
 			CURLOPT_HEADER => true,
 			CURLOPT_RETURNTRANSFER => true,
-			CURLOPT_TIMEOUT => 3,
+			CURLOPT_TIMEOUT => 30,
 		);
 		$default_headers = array();
 		if(!isset($method)){
@@ -58,6 +58,7 @@ class Image4IOApi{
 				curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
 			case 'DELETE':
 				curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $method);
+				curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
 				break;
 		}
 		curl_setopt_array($curl, $curl_options);
@@ -87,6 +88,73 @@ class Image4IOApi{
 			'content' => $content,
 			'error' => $error
 		);
+	}
+
+	private function uploadFile($uri,$method,$data=null,$curl_headers=array(), $curl_options=array()){
+		$default_curl_options = array(
+			CURLOPT_SSL_VERIFYPEER => false,
+			CURLOPT_HEADER => true,
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_TIMEOUT => 300,
+		);
+		$default_headers = array();
+		if(!isset($method)){
+			throw new \Exception("Method cannot be null");
+		}
+		$method = trim($method);
+		$allowed_methods = array('POST', 'PATCH');
+
+		if(!in_array($method, $allowed_methods))
+			throw new \Exception("'$method' is not valid cURL HTTP method.");
+
+		if(!empty($data) && !is_array($data))
+			throw new \Exception("Invalid data for cURL request '$method $uri'");
+
+		$curl = curl_init($uri);
+		curl_setopt_array($curl, $default_curl_options);
+		switch($method) {
+			case 'POST':
+				if(!is_array($data))
+					throw new \Exception("Invalid data for cURL request '$method $uri'");
+				curl_setopt($curl, CURLOPT_POST, true);
+				curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
+				break;
+			case 'PATCH':
+				if(!is_array($data))
+					throw new \Exception("Invalid data for cURL request '$method $uri'");
+				curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $method);
+				curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
+		}
+		curl_setopt_array($curl, $curl_options);
+		curl_setopt($curl, CURLOPT_HTTPHEADER, array_merge($default_headers, $curl_headers));
+		$raw = rtrim(curl_exec($curl));
+		$lines = explode("\r\n", $raw);
+		$headers = array();
+		$content = '';
+		$write_content = false;
+		if(count($lines) > 3) {
+			foreach($lines as $h) {
+				if($h == '')
+					$write_content = true;
+				else {
+					if($write_content)
+						$content .= $h."\n";
+					else
+						$headers[] = $h;
+				}
+			}
+		}
+		$error = curl_error($curl);
+		
+		return array(
+			'raw' => $raw,
+			'headers' => $headers,
+			'content' => $content,
+			'error' => $error
+		);
+		
+		
+		
 	}
 	
 	public function connect() {
@@ -144,19 +212,24 @@ class Image4IOApi{
 		return $query;
 	}
 	
-	public function uploadImage($file,$folder='',$useFilename=false,$overwrite=true) {
+	public function uploadImage($filepath,$filename,$folder='',$useFilename=false,$overwrite=true) {
 		$headers = array(
 			'Content-Type: multipart/form-data',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
+		if (function_exists('curl_file_create')) { 
+			$file = curl_file_create($filepath,null,$filename);
+		  } else { // 
+			$file = '@' . realpath($filepath);
+		  }
 		$data=array(
-			'folder'=>$folder,
-			'useFilename'=>$useFilename,
-			'overwrite'=>$overwrite,
-			'file'=>new CurlFile( $file['tmp_name'], $file['type'],$file['name'])
+			'path'=>$folder,
+			'useFilename'=>json_encode($useFilename),
+			'overwrite'=>json_encode($overwrite),
+			'file'=>$file
 		);
 		
-		$query = $this->query($this->endpoint . 'uploadImage', 'POST', $data, $headers);
+		$query = $this->uploadFile($this->endpoint . 'uploadImage', 'POST', $data, $headers);
 		return $query;
 	}
 	
@@ -184,7 +257,7 @@ class Image4IOApi{
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
 		$query = $this->query($this->endpoint .'deleteImage','DELETE',array('name'=>$name),$headers);
-		return json_decode($query);
+		return $query;
 	}
 
 	public function deleteStream($name='') {
@@ -193,7 +266,7 @@ class Image4IOApi{
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
 		$query = $this->query($this->endpoint .'deleteStream','DELETE',array('name'=>$name),$headers);
-		return json_decode($query);
+		return $query;
 	}
 
 	public function deleteFolder($path='') {
@@ -234,19 +307,24 @@ class Image4IOApi{
 		return $query;
 	}
 
-	public function uploadStreamPart($part,$partId,$filename,$token) {
+	public function uploadStreamPart($part_path,$partId,$filename,$token) {
 		$headers = array(
 			'Content-Type: multipart/form-data',
 			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
 		);
+		if (function_exists('curl_file_create')) { 
+			$file = curl_file_create($part_path,null,$filename);
+		  } else { // 
+			$file = '@' . realpath($part_path);
+		  }
 		$data=array(
 			'partId'=>$partId,
 			'filename'=>$filename,
 			'token'=>$token,
-			'part'=>new CurlFile( $part['tmp_name'], $part['type'],$part['name'])
+			'part'=>$file
 		);
 		
-		$query = $this->query($this->endpoint . 'uploadStream', 'PATCH', $data, $headers);
+		$query = $this->uploadFile($this->endpoint . 'uploadStream', 'PATCH', $data, $headers);
 		return $query;
 	}
 
