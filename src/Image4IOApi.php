@@ -38,28 +38,24 @@ class Image4IOApi{
 		curl_setopt_array($curl, $default_curl_options);
 		switch($method) {
 			case 'GET':
-				/*if($data){
-					curl_setopt( $ch, CURLOPT_CUSTOMREQUEST, 'GET' );
-					curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
-				}*/
 				break;
 			case 'POST':
 				if(!is_array($data))
 					throw new \Exception("Invalid data for cURL request '$method $uri'");
 				curl_setopt($curl, CURLOPT_POST, true);
-				curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
+				curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
 				break;
 			case 'PUT':
 				if(!is_array($data))
 					throw new \Exception("Invalid data for cURL request '$method $uri'");
 				curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $method);
-				curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
+				curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
 				break;
 			case 'PATCH':
 				if(!is_array($data))
 					throw new \Exception("Invalid data for cURL request '$method $uri'");
 				curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $method);
-				curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
+				curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
 			case 'DELETE':
 				curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $method);
 				break;
@@ -232,7 +228,7 @@ class Image4IOApi{
 		);
 		$body=array(
 			'source'=>$source,
-			'targetPath'=>$targetPath
+			'targetPath'=>$target
 		);
 		$query = $this->query($this->endpoint .'moveImage','PUT',$body,$headers);
 		return $query;
