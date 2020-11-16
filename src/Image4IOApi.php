@@ -96,8 +96,11 @@ class Image4IOApi{
 			CURLOPT_HEADER => true,
 			CURLOPT_RETURNTRANSFER => true,
 			CURLOPT_TIMEOUT => 300,
+
 		);
-		$default_headers = array();
+		$default_headers = array(
+			"Expect:"
+		);
 		if(!isset($method)){
 			throw new \Exception("Method cannot be null");
 		}
