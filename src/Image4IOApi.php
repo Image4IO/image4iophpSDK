@@ -349,4 +349,12 @@ class Image4IOApi{
 		return $query;
 	}
 
+	public function purge() {
+		$headers = array(
+			'Content-Type: application/json',
+			'Authorization: Basic '. base64_encode($this->api.":".$this->apiKey)
+		);
+		$query = $this->query($this->endpoint . 'purge','DELETE',null,$headers);
+		return $query;
+	}
 }
